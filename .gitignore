@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated outputs (keep the folders, ignore their contents)
+figures/*
+results/*
+!figures/.gitkeep
+!results/.gitkeep
