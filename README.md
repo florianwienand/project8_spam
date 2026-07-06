@@ -57,9 +57,9 @@ pip install -r requirements.txt
 python run_all.py        # rebuilds every figure and JSON, ~20 min total
 ```
 
-`run_all.py` chains the five scripts above; each also runs on its own. Only
-`make_video.py` needs `ffmpeg` on the PATH. The dataset ships with the repo (SMS
-Spam Collection, 5,574 messages, ~13% spam), so nothing is downloaded. Note: the
+`run_all.py` chains the four experiment scripts; each also runs on its own.
+The dataset ships with the repo (SMS Spam Collection, 5,574 messages, ~13%
+spam), so nothing is downloaded. Note: the
 file is latin-1 encoded, so a UTF-8 mirror turns `£100` into `Â£100` and shifts
 the character kernels.
 

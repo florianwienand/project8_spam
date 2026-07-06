@@ -1,8 +1,4 @@
-"""One command, every result -- the master script for the full experiment suite.
-
-Runs each experiment in order with a stage-level progress bar and per-stage
-timing; each script's own output (seed progress etc.) streams through unchanged.
-Every stage can still be run on its own (see the README), this just chains them.
+"""Runs every experiment in order. Each stage also runs on its own.
 
 Run from the project root:  python run_all.py
 """

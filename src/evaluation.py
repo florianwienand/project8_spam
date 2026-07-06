@@ -17,9 +17,8 @@ def binary_metrics(pred, y_true):
 
 
 def class_block_means(K, y):
-    """Mean off-diagonal kernel value within-spam, within-ham, and between classes.
-    y uses +1 = spam, -1 = ham. The spam/between ratio says how strongly spam clusters
-    (1.0 = no clustering). This is the quantitative companion to the sorted heatmap."""
+    """Mean off-diagonal kernel value within-spam, within-ham, and between
+    classes (+1 = spam). A spam/between ratio of 1.0 means no clustering."""
     m = ~np.eye(len(y), dtype=bool)
     spam = (y[:, None] == 1) & (y[None, :] == 1) & m
     ham = (y[:, None] == -1) & (y[None, :] == -1) & m
@@ -33,11 +32,10 @@ def plot_kernel_comparison(panels, n_ham, path,
                            suptitle="Kernel matrices sorted by class (ham, then spam)"):
     """Side-by-side kernel heatmaps with the spam-spam block outlined.
 
-    panels : list of (K_sorted, title, colorbar_label). Each K_sorted is a Gram matrix
-             with rows/cols ALREADY sorted by class (ham first, then spam). Each panel is
-             scaled to its own 5-99th percentile of off-diagonal values, so vmin > 0 and
-             the colormap isn't wasted on an empty low range.
-    n_ham  : index where the spam block starts (number of ham rows after sorting).
+    panels : list of (K_sorted, title, colorbar_label); Grams already sorted by
+             class (ham first). Each panel is scaled to its own 5-99th
+             percentile of off-diagonal values.
+    n_ham  : number of ham rows, i.e. where the spam block starts.
     """
     fig, axes = plt.subplots(1, len(panels), figsize=(6.3 * len(panels), 5.4))
     if len(panels) == 1:
@@ -65,8 +63,8 @@ def plot_kernel_comparison(panels, n_ham, path,
 
 
 def plot_kernel_heatmap(kernel, X, y, path, title="Kernel matrix (sorted by class)", vmax=None):
-    """Single kernel heatmap, rows/cols sorted by class. Kept for backward compatibility;
-    plot_kernel_comparison is the preferred figure for the report."""
+    """Single kernel heatmap, rows/cols sorted by class (superseded by
+    plot_kernel_comparison)."""
     order = np.argsort(y)
     K = kernel(X[order], X[order])
     if vmax is None:
@@ -82,18 +80,14 @@ def plot_kernel_heatmap(kernel, X, y, path, title="Kernel matrix (sorted by clas
 
 def plot_roc_pr(model_scores, path, prevalence=None,
                 suptitle="ROC and precision-recall (mean over seeds, band = +/-1 std)"):
-    """ROC and precision-recall curves averaged over seeds.
+    """ROC and precision-recall curves averaged over seeds. Both sweep the
+    decision threshold, so they show ranking quality independent of the
+    default cutoff.
 
-    These are THRESHOLD-INDEPENDENT: they sweep the decision threshold, so they show a
-    model's full ranking quality rather than its behaviour at the single default cutoff.
-    That distinction matters here -- a model can have strong ranking (high AUC) yet poor
-    recall at threshold 0 if its bias is misplaced.
-
-    model_scores : dict  name -> list of (scores, y_true) tuples, one per seed.
-                   scores = continuous decision_function values; y_true uses +1 = spam.
+    model_scores : dict name -> list of (scores, y_true) per seed, +1 = spam.
     prevalence   : spam fraction, drawn as the no-skill line on the PR panel.
 
-    Returns {name: {"roc_auc": [mean, std], "avg_precision": [mean, std]}} for logging.
+    Returns {name: {"roc_auc": [mean, std], "avg_precision": [mean, std]}}.
     """
     from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
     fpr_grid = np.linspace(0, 1, 200)
@@ -147,10 +141,7 @@ def plot_obfuscation_robustness(levels, curves, path,
                                 suptitle="Spam recall under adversarial obfuscation "
                                          "(mean over seeds, band = +/-1 std)"):
     """Recall vs obfuscation intensity, one line per representation.
-
-    levels : list of obfuscation intensities (x-axis).
-    curves : dict name -> array (n_seeds x n_levels) of recall values.
-    """
+    curves : dict name -> array (n_seeds x n_levels) of recall values."""
     levels = np.asarray(levels)
     fig, ax = plt.subplots(figsize=(8, 5))
     colors = plt.cm.tab10(np.linspace(0, 1, 10))

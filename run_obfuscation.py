@@ -1,16 +1,7 @@
-"""Adversarial obfuscation robustness -- the creative experiment, and the reason string
-kernels are worth the trouble in the first place.
-
-Spam filters get attacked: spammers rewrite "free money" as "fr33 m0n3y" or "f r e e" to
-dodge keyword matching. So we train each representation on CLEAN data, then obfuscate ONLY
-the spam test messages -- legitimate senders don't scramble their own texts -- at rising
-intensity, and watch how much spam still gets caught (recall). Ham is never touched, which
-means precision can't drift and every drop in recall is a real detection loss, not the
-model just leaning toward "spam".
-
-The whole question: do character-level and edit-distance kernels survive evasion that
-breaks word features? (Spoiler in figures/obfuscation_robustness.png: the clean ranking
-inverts.)
+"""Obfuscation robustness: train every representation on clean data, then
+obfuscate only the spam test messages (leetspeak + intra-word spacing) at
+rising intensity and track spam recall. Ham is never touched, so precision
+cannot drift and every recall drop is a real detection loss.
 
 run from the project root:  python run_obfuscation.py"""
 import json
@@ -50,15 +41,14 @@ def main():
     for si, seed in enumerate(SEEDS):
         X_tr, y_tr, X_te, y_te = make_split(X, y, SUBSAMPLE, TRAIN_FRAC, seed=seed)
 
-        # train every representation on CLEAN data, then attack only the test set.
-        # (level 0.0 leaves the text untouched, so those columns should match the clean
-        # recall from run_experiments -- a free consistency check between the two scripts.)
+        # level 0.0 leaves the text untouched, so it should match the clean
+        # recall from run_experiments (consistency check between the scripts)
         _, _, vec = tfidf_features(X_tr, X_te)
         word = BinaryKernelSVM(C=C, kernel="linear")
         word.fit(vec.transform(list(X_tr)).toarray(), y_tr)
         char = BinaryKernelSVM(C=C, kernel="custom", kernel_function=SpectrumKernel(k=3).normalized)
         char.fit(X_tr, y_tr)
-        # only the train features are needed to fit; the X_tr[:1] dummy test arg is discarded.
+        # only the train features are needed here; the X_tr[:1] dummy arg is discarded
         Phi_tr, _ = levenshtein_kpca_features(X_tr, X_tr[:1], sigma=SIGMA)
         edit = BinaryKernelSVM(C=C, kernel="linear")
         edit.fit(Phi_tr, y_tr)

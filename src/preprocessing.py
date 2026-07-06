@@ -14,8 +14,8 @@ def load_sms(path):
 
 
 def clean_text(text):
-    """Minimal cleaning: lowercase + collapse whitespace. Digits and punctuation
-    are kept on purpose -- they carry spam signal for character-level kernels."""
+    """Lowercase + collapse whitespace. Digits and punctuation are kept on
+    purpose, they carry spam signal for character-level kernels."""
     return " ".join(str(text).lower().split())
 
 
@@ -31,8 +31,7 @@ def stratified_indices(y, n, rng):
 
 def make_split(X, y, size, train_frac, seed=0):
     """Stratified subsample to `size`, then stratified train/test split.
-    Indices are shuffled before returning so train/test are not class-ordered
-    (protects anything order-sensitive downstream, e.g. mini-batch training)."""
+    Indices are shuffled so train/test are not class-ordered."""
     rng = np.random.default_rng(seed)
     sub = stratified_indices(y, size, rng)
     rng.shuffle(sub)
@@ -44,21 +43,12 @@ def make_split(X, y, size, train_frac, seed=0):
 
 
 def tfidf_features(X_train, X_test, ngram_range=(1, 2), min_df=2):
-    """Word TF-IDF features for the baseline.
+    """Word TF-IDF features for the baseline. Fit on the training split only,
+    then transform both splits with that vocabulary (no leakage). Rows are
+    L2-normalized by default, so the linear-kernel diagonal is 1, the same
+    scale as the normalized string kernels.
 
-    Fit on the TRAINING split ONLY (the vocabulary and IDF weights never see test
-    data -- no leakage), then transform both splits with that fitted vocabulary.
-    Returns dense float arrays so the data flows straight through courselib's
-    BinaryKernelSVM(kernel='linear'). Rows are L2-normalized by default, so the
-    linear-kernel diagonal is 1 -- the same scale as the normalized string kernels,
-    which keeps a shared C comparable across models.
-
-    Returns
-    -------
-    (X_train_tfidf, X_test_tfidf, vectorizer)
-        vectorizer is returned so feature names / vocabulary size can be inspected
-        or reused (e.g. to feed the MLP baseline the same representation).
-    """
+    Returns (X_train_tfidf, X_test_tfidf, vectorizer)."""
     from sklearn.feature_extraction.text import TfidfVectorizer
     vec = TfidfVectorizer(ngram_range=ngram_range, min_df=min_df)
     X_train_tfidf = vec.fit_transform(list(X_train)).toarray()
@@ -69,13 +59,9 @@ _LEET = {"a": "4", "e": "3", "i": "1", "o": "0", "s": "5", "t": "7", "g": "9", "
 
 
 def obfuscate(text, level, rng):
-    """Spammer-style evasion at intensity `level` in [0, 1], used by the robustness
-    experiment. Two real tactics for slipping spam past keyword filters:
-      * leetspeak character substitution (a->4, e->3, o->0, ...), each eligible
-        character swapped with probability `level`;
-      * intra-word space insertion with probability 0.25*level per character
-        (e.g. "free" -> "f r ee").
-    `rng` is a numpy Generator so the corruption is reproducible."""
+    """Spammer-style evasion at intensity `level` in [0, 1]: leetspeak
+    substitution (each eligible character with probability `level`) and
+    intra-word space insertion (probability 0.25*level per character)."""
     out = []
     for ch in text:
         low = ch.lower()

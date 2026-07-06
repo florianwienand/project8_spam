@@ -1,25 +1,7 @@
-"""Kernel interpolation -- the "do we have to choose?" experiment.
-
-The robustness result says the ranking of representations inverts under attack: spectrum
-wins clean, edit wins obfuscated. The obvious follow-up (and one of the project sheet's
-listed extensions) is the convex mixture
-
-    K_alpha = alpha * K_spectrum  +  (1 - alpha) * K_levenshtein,
-
-swept from pure edit (alpha=0) to pure spectrum (alpha=1). Question: is there an alpha
-that keeps (most of) the clean accuracy AND (most of) the attack robustness, or does the
-mixture just trade one for the other linearly?
-
-Treatment is IDENTICAL for every alpha: the mixture is indefinite for alpha < 1, so every
-alpha -- including the PSD endpoint alpha=1 -- goes through the same kPCA projection
-(positive eigen-directions, 99% mass) + linear SVM. That way differences between alphas
-are due to alpha, not to a change of repair. Two endpoint sanity checks come for free:
-alpha=0 must reproduce the Levenshtein-kPCA row and alpha=1 should sit near the direct
-Spectrum k=3 row (it is PSD, the projection barely touches it).
-
-Costs almost nothing on top of the other scripts: the obfuscated texts do not depend on
-alpha, so the two rectangular test kernels are computed once per level and mixed per
-alpha as a weighted sum.
+"""Kernel interpolation K_alpha = alpha*K_spectrum + (1-alpha)*K_edit, swept
+from pure edit (alpha=0) to pure spectrum (alpha=1), evaluated clean and under
+attack. Every alpha gets the identical kPCA + linear-SVM treatment (the mixture
+is indefinite for alpha < 1), so the endpoints reproduce the main-table rows.
 
 Run from the project root:  python run_interpolation.py
 """
@@ -43,8 +25,8 @@ VAR_KEEP = 0.99
 
 
 def kpca_basis(K_tr, var_keep=VAR_KEEP):
-    """positive eigen-directions covering `var_keep` of the positive mass.
-    same recipe as levenshtein_kpca_features, factored out so the mixture reuses it."""
+    """Positive eigen-directions covering `var_keep` of the positive mass.
+    Same recipe as levenshtein_kpca_features, factored out for the mixture."""
     Ks = (K_tr + K_tr.T) / 2.0
     w, V = np.linalg.eigh(Ks)
     pos = w > 1e-8
@@ -82,15 +64,15 @@ def main():
         spam_idx = np.where(y_te == 1)[0]
         ham_idx = np.where(y_te == -1)[0]
 
-        # the two train Grams, computed once; every alpha is a weighted sum of these
+        # train Grams and clean test rectangles once; every alpha is a weighted sum
         Ksp_tr = spec.normalized(X_tr, X_tr)
         Klv_tr = lev(X_tr, X_tr)
-        # clean test rectangles, also once
         Ksp_te = spec.normalized(X_te, X_tr)
         Klv_te = lev(X_te, X_tr)
 
-        # attacked spam rectangles, once per level (they do not depend on alpha)
-        rng = np.random.default_rng(10_000 + seed)   # same attack stream as run_obfuscation
+        # attacked rectangles once per level (they do not depend on alpha);
+        # same attack stream as run_obfuscation
+        rng = np.random.default_rng(10_000 + seed)
         Ksp_att, Klv_att = [], []
         for level in LEVELS:
             obf = [obfuscate(X_te[i], level, rng) for i in spam_idx]
@@ -116,7 +98,6 @@ def main():
                 att_rec[si, ai, li] = np.mean(pr == 1)
         print(f"  seed {seed} done ({time.time()-t0:.0f}s)", flush=True)
 
-    # console summary
     print(f"\n{'alpha':>6}{'clean acc %':>14}{'clean recall':>14}{'recall@0.3':>12}{'recall@0.6':>12}")
     for ai, a in enumerate(ALPHAS):
         print(f"{a:>6.2f}{clean_acc[:, ai].mean():>11.1f}±{clean_acc[:, ai].std():<4.1f}"
@@ -134,7 +115,7 @@ def main():
         json.dump(out, f, indent=2)
     print("\nsaved results/interpolation.json")
 
-    # figure: (A) recall vs level, one line per alpha; (B) the tradeoff vs alpha
+    # (A) recall vs level, one line per alpha; (B) the tradeoff vs alpha
     fig, (axA, axB) = plt.subplots(1, 2, figsize=(12.5, 4.8))
     cmap = plt.cm.viridis(np.linspace(0.08, 0.92, nA))
     for ai, a in enumerate(ALPHAS):
@@ -161,9 +142,7 @@ def main():
     plt.savefig("figures/kernel_interpolation.png", dpi=130, bbox_inches="tight")
     print("saved figures/kernel_interpolation.png")
 
-    # standalone copy of panel (B), sized for the report's one-column slot. same
-    # data, no titles -- the LaTeX caption does the talking. exists so run_all.py
-    # really does regenerate every file the report includes.
+    # standalone copy of panel (B) sized for the report's one-column slot
     figB, ax = plt.subplots(figsize=(6.4, 4.8))
     ax.errorbar(ALPHAS, clean_acc.mean(0) / 100, yerr=clean_acc.std(0) / 100, fmt="-s",
                 color="#333333", lw=1.8, ms=5, capsize=3, label="clean accuracy")

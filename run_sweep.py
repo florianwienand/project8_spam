@@ -1,21 +1,7 @@
-"""Kernel hyperparameter sensitivity -- the supplementary figure. Its job is to turn three
-claims the report makes in prose into evidence you can actually see, all on the same
-1000-message subsample / 5 seeds as the main experiment so the numbers line up:
-
-  1. Levenshtein sigma, geometry: as sigma -> 0 the kernel collapses toward the identity
-     (mean off-diagonal -> 0, support-vector fraction -> 1); as sigma grows the raw Gram
-     gets more indefinite (negative-eigenvalue mass rises).
-  2. Levenshtein sigma, performance: the kPCA classifier's *ranking* (ROC-AUC) is flat
-     across sigma, while its *recall* at the default threshold peaks in a mid-sigma band
-     -- the same ranking-vs-threshold split as the main results. sigma=0.45 sits in the band.
-  3. Spectrum order k: larger k is more specific (spam/between block ratio rises) and
-     sparser (mean off-diagonal falls, #SV rises), but recall is an inverted-U peaking at
-     k=3; precision stays ~1.0 throughout.
-
-The one trick that keeps this cheap: the normalized Levenshtein distance matrix is the
-expensive bit and it doesn't depend on sigma, so we compute it ONCE per seed and only
-re-apply the (cheap) RBF transform per sigma. Raw per-seed arrays go to results/sweep.json,
-the figure to figures/kernel_sensitivity.png.
+"""Hyperparameter sensitivity: Levenshtein width sigma (kernel geometry and
+kPCA performance) and spectrum order k, on the same subsample and seeds as the
+main experiment. The Levenshtein distance matrix does not depend on sigma, so
+it is computed once per seed and only the cheap RBF transform is swept.
 
 Run from the project root:  python run_sweep.py
 """
@@ -39,8 +25,8 @@ SIGMA_REF, K_REF = 0.45, 3
 
 
 def _kpca_from_D(D_tr, D_te, sigma, var_keep=0.99):
-    """levenshtein_kpca_features, but reusing a precomputed distance matrix so the sigma
-    loop doesn't recompute it every time. same projection, just cheaper to sweep."""
+    """levenshtein_kpca_features on a precomputed distance matrix, so the
+    sigma loop does not recompute the expensive part."""
     K = np.exp(-(D_tr ** 2) / (2 * sigma ** 2))
     K = (K + K.T) / 2.0
     w, V = np.linalg.eigh(K)
